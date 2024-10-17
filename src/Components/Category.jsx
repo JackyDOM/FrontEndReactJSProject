@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 
 function Category({ onAddCategory }) {
   const [name, setName] = useState('');
@@ -6,6 +7,26 @@ function Category({ onAddCategory }) {
   const [entries, setEntries] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const storedCategories = localStorage.getItem('categories');
+    if (storedCategories) {
+      setEntries(JSON.parse(storedCategories));
+    } else {
+      const fetchCategories = async () => {
+        try {
+          const response = await axios.get('/api/categories');
+          const categories = Array.isArray(response.data) ? response.data : [];
+          setEntries(categories);
+          localStorage.setItem('categories', JSON.stringify(categories));
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          setEntries([]);
+        }
+      };
+      fetchCategories();
+    }
+  }, []);
 
   const handleNameChange = (e) => {
     setName(e.target.value);
@@ -28,20 +49,47 @@ function Category({ onAddCategory }) {
       return;
     }
 
-    // Call the onAddCategory prop to add the new category
-    onAddCategory(name);
+    const newCategory = {
+      name,
+      imageName: fileInputRef.current.files[0].name,
+      imageType: fileInputRef.current.files[0].type,
+      imageData: image.split(',')[1]
+    };
 
-    setEntries([...entries, { name, image }]);
-    setName('');
-    setImage(null);
-    setErrorMessage('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    axios.post('http://localhost:8080/api/categories', newCategory)
+      .then(response => {
+        const addedCategory = response.data;
+        setEntries(prevEntries => {
+          const updatedEntries = [...prevEntries, addedCategory];
+          localStorage.setItem('categories', JSON.stringify(updatedEntries));
+          return updatedEntries;
+        });
+        setName('');
+        setImage(null);
+        setErrorMessage('');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        onAddCategory(addedCategory);
+      })
+      .catch(error => {
+        console.error('Error adding category:', error);
+        setErrorMessage('Failed to add category');
+      });
   };
 
-  const handleDelete = (index) => {
-    setEntries(entries.filter((_, i) => i !== index));
+  const handleDelete = (id) => {
+    axios.delete(`http://localhost:8080/api/categories/${id}`)
+      .then(() => {
+        setEntries(prevEntries => {
+          const updatedEntries = prevEntries.filter(entry => entry.id !== id);
+          localStorage.setItem('categories', JSON.stringify(updatedEntries));
+          return updatedEntries;
+        });
+      })
+      .catch(error => {
+        console.error('Error deleting category:', error);
+      });
   };
 
   return (
@@ -58,7 +106,7 @@ function Category({ onAddCategory }) {
           value={name}
           onChange={handleNameChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter your name"
+          placeholder="Enter category name"
         />
       </div>
 
@@ -84,16 +132,26 @@ function Category({ onAddCategory }) {
       </button>
 
       <div className="mt-4">
-        {entries.map((entry, index) => (
-          <div key={index} className="border border-red-300 p-4 mb-4 rounded-md">
-            <h3 className="text-lg font-bold">Submitted Information:</h3>
-            <p className="text-gray-700">Name: {entry.name}</p>
-            {entry.image && <img src={entry.image} alt="Uploaded" className="mt-2 w-32 h-32 object-cover" />}
-            <button onClick={() => handleDelete(index)} className="bg-red-500 mt-2 text-white px-4 py-2 rounded-md hover:bg-red-600">
-              Delete
-            </button>
-          </div>
-        ))}
+        {entries.length > 0 ? (
+          entries.map((entry, index) => (
+            <div key={index} className="border border-red-300 p-4 mb-4 rounded-md">
+              <h3 className="text-lg font-bold">Submitted Information:</h3>
+              <p className="text-gray-700">Name: {entry.name}</p>
+              {entry.imageData && (
+                <img
+                  src={`data:${entry.imageType};base64,${entry.imageData}`}
+                  alt="Uploaded"
+                  className="mt-2 w-32 h-32 object-cover"
+                />
+              )}
+              <button onClick={() => handleDelete(entry.id)} className="bg-red-500 mt-2 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                Delete
+              </button>
+            </div>
+          ))
+        ) : (
+          <p>No categories found.</p>
+        )}
       </div>
     </div>
   );
