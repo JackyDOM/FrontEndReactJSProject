@@ -92,10 +92,18 @@ const handleSubmit = () => {
   };
 
   // Handle deletion of an entry
-  const handleDelete = (index) => {
-    const updatedEntries = entries.filter((_, i) => i !== index);
-    setEntries(updatedEntries);
-    localStorage.setItem('provinces', JSON.stringify(updatedEntries)); // Update local storage
+  const handleDelete = (id) => {
+    axios.delete(`http://localhost:8080/api/provinces/${id}`)
+      .then(() => {
+        setEntries(prevEntries => {
+          const updatedEntries = prevEntries.filter(entry => entry.id !== id);
+          localStorage.setItem('provinces', JSON.stringify(updatedEntries)); // Update local storage
+          return updatedEntries;
+        });
+      })
+      .catch(error => {
+        console.error('Error deleting province:', error);
+      });
   };
 
   return (
@@ -172,20 +180,21 @@ const handleSubmit = () => {
         {entries.length > 0 ? (
           entries.map((entry, index) => (
             <div key={index} className="border border-gray-300 p-4 mb-4 rounded-md">
-              <h3 className="text-lg font-bold">Submitted Information:</h3>
-              <p className="text-gray-700">Province: {entry.provinceName}</p>
-              <p className="text-gray-700">Location: {entry.location}</p>
-              <p className="text-gray-700">Category: {entry.selectedCategory}</p>
-              <img
-                src={`data:${entry.provinceImageType};base64,${entry.provinceImageData}`}
-                alt="Uploaded"
-                className="mt-2 w-32 h-32 object-cover"
-              />
-              <button onClick={() => handleDelete(index)} className="bg-red-500 mt-2 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                <h3 className="text-lg font-bold">Submitted Information:</h3>
+                <p className="text-gray-700">Province: {entry.provinceName}</p>
+                <p className="text-gray-700">Location: {entry.location}</p>
+                <p className="text-gray-700">Category: {entry.category ? entry.category.name : 'No category'}</p> {/* Ensure you're checking for category */}
+                <img
+                    src={`data:${entry.provinceImageType};base64,${entry.provinceImageData}`}
+                    alt="Uploaded"
+                    className="mt-2 w-32 h-32 object-cover"
+                />
+                <button onClick={() => handleDelete(entry.id)} className="bg-red-500 mt-2 text-white px-4 py-2 rounded-md hover:bg-red-600">
                 Delete
               </button>
             </div>
-          ))
+        ))
+        
         ) : (
           <p>No provinces found.</p>
         )}
