@@ -70,7 +70,7 @@ function Food() {
       const addedFood = response.data;
       setEntries(prevEntries => {
         const updatedEntries = [...prevEntries, addedFood];
-        localStorage.setItem('food', JSON.stringify(updatedEntries));
+        localStorage.setItem('foods', JSON.stringify(updatedEntries));
         return updatedEntries;
       });
       resetForm();
@@ -96,8 +96,9 @@ function Food() {
     axios.delete(`http://localhost:8080/api/food/${id}`) // Adjusted to the correct endpoint
       .then(() => {
         setEntries(prevEntries => {
-          const updatedEntries = prevEntries.filter((_, i) => i !== id); // Correct filter logic
-          localStorage.setItem('food', JSON.stringify(updatedEntries));
+          // const updatedEntries = prevEntries.filter((_, i) => i !== id); // Correct filter logic
+          const updatedEntries = prevEntries.filter(entry => entry.id !== id); // Correct filter logic
+          localStorage.setItem('foods', JSON.stringify(updatedEntries));
           return updatedEntries;
         });
       })
@@ -213,8 +214,8 @@ function Food() {
 
       {/* Display Submitted Entries */}
       <div className="mt-4">
-        {entries.map((entry, id) => (
-          <div key={id} className="border border-blue-300 p-4 mb-4 rounded-md">
+        {entries.map((entry, index) => (
+          <div key={index} className="border border-blue-300 p-4 mb-4 rounded-md">
             <h3 className="text-lg font-bold">Submitted Information:</h3>
             <p className="text-gray-700">Food Name: {entry.foodName}</p>
             <p className="text-gray-700">Description: {entry.foodDescription}</p>
@@ -222,7 +223,7 @@ function Food() {
             <p className="text-gray-700">Location: {entry.foodLocation}</p>
             <p className="text-gray-700">Province: {entry.province.provinceName}</p>
             <img src={`data:${entry.foodImageType};base64,${entry.foodImageData}`} alt={entry.foodName} className="w-32 h-32 object-cover mt-2" />
-            <button onClick={() => handleDelete(id)} className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 mt-2">
+            <button onClick={() => handleDelete(entry.id)} className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 mt-2">
               Delete
             </button>
           </div>
